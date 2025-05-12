@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TapSwap</title>
+    <link rel="stylesheet" href="responsive.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Main Container -->
+    <div id="app">
+        <!-- Profile Section -->
+        <section id="profile" class="section">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <img id="user-photo" src="default-avatar.png" alt="Profile Photo">
+                    <h2 id="user-name">Loading...</h2>
+                </div>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span class="label">Joined</span>
+                        <span id="join-date">Loading...</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Points</span>
+                        <span id="points">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Referrals</span>
+                        <span id="referrals">0</span>
+                    </div>
+                </div>
+                <div class="referral-link">
+                    <input type="text" id="ref-link" readonly>
+                    <button onclick="copyReferralLink()">Copy</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tap Section -->
+        <section id="tap" class="section">
+            <div class="tap-container">
+                <div class="energy-bar">
+                    <div id="energy-level"></div>
+                </div>
+                <div class="cat-container">
+                    <img src="https://i.imgur.com/8ZUTdb2.png" alt="Cat" id="cat">
+                </div>
+                <div class="points-display">
+                    <span id="tap-points">0</span> points
+                </div>
+            </div>
+        </section>
+
+        <!-- Tasks Section -->
+        <section id="tasks" class="section">
+            <div class="tasks-container">
+                <h2>Daily Tasks</h2>
+                <div id="task-list"></div>
+            </div>
+        </section>
+
+        <!-- Withdraw Section -->
+        <section id="withdraw" class="section">
+            <div class="withdraw-container">
+                <h2>Withdraw Points</h2>
+                <div class="balance-display">
+                    Available Points: <span id="available-points">0</span>
+                </div>
+                <div class="withdraw-methods">
+                    <div class="method" onclick="selectWithdrawMethod('paypal')">
+                        <i class="fab fa-paypal"></i>
+                        <span>PayPal</span>
+                    </div>
+                    <div class="method" onclick="selectWithdrawMethod('bank')">
+                        <i class="fas fa-university"></i>
+                        <span>Bank Transfer</span>
+                    </div>
+                </div>
+                <form id="withdraw-form" class="hidden">
+                    <input type="number" id="withdraw-amount" placeholder="Amount (min: 5000 points)">
+                    <input type="text" id="withdraw-address" placeholder="Payment Address">
+                    <button type="submit">Submit Withdrawal</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <div class="nav-item" onclick="showSection('profile')">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </div>
+            <div class="nav-item" onclick="showSection('tap')">
+                <i class="fas fa-hand-pointer"></i>
+                <span>Tap</span>
+            </div>
+            <div class="nav-item" onclick="showSection('tasks')">
+                <i class="fas fa-tasks"></i>
+                <span>Tasks</span>
+            </div>
+            <div class="nav-item" onclick="showSection('withdraw')">
+                <i class="fas fa-wallet"></i>
+                <span>Withdraw</span>
+            </div>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
