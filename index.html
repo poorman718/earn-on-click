@@ -1,113 +1,119 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TapSwap</title>
-    <link rel="stylesheet" href="responsive.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-</head>
-<body>
-    <!-- Main Container -->
-    <div id="app">
-        <!-- Profile Section -->
-        <section id="profile" class="section">
-            <div class="profile-container">
-                <div class="profile-header">
-                    <img id="user-photo" src="default-avatar.png" alt="Profile Photo">
-                    <h2 id="user-name">Loading...</h2>
-                </div>
-                <div class="profile-stats">
-                    <div class="stat">
-                        <span class="label">Joined</span>
-                        <span id="join-date">Loading...</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">Points</span>
-                        <span id="points">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">Referrals</span>
-                        <span id="referrals">0</span>
-                    </div>
-                </div>
-                <div class="referral-link">
-                    <input type="text" id="ref-link" readonly>
-                    <button onclick="copyReferralLink()">Copy</button>
-                </div>
-            </div>
-        </section>
+import logging
+import requests
+import sqlite3
+import os
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
 
-        <!-- Tap Section -->
-        <section id="tap" class="section">
-            <div class="tap-container">
-                <div class="energy-bar">
-                    <div id="energy-level"></div>
-                </div>
-                <div class="cat-container">
-                    <img src="https://i.imgur.com/8ZUTdb2.png" alt="Cat" id="cat">
-                </div>
-                <div class="points-display">
-                    <span id="tap-points">0</span> points
-                </div>
-            </div>
-        </section>
+# Set up logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-        <!-- Tasks Section -->
-        <section id="tasks" class="section">
-            <div class="tasks-container">
-                <h2>Daily Tasks</h2>
-                <div id="task-list"></div>
-            </div>
-        </section>
+# Telegram API Token (You can set this in Heroku config variables)
+API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
 
-        <!-- Withdraw Section -->
-        <section id="withdraw" class="section">
-            <div class="withdraw-container">
-                <h2>Withdraw Points</h2>
-                <div class="balance-display">
-                    Available Points: <span id="available-points">0</span>
-                </div>
-                <div class="withdraw-methods">
-                    <div class="method" onclick="selectWithdrawMethod('paypal')">
-                        <i class="fab fa-paypal"></i>
-                        <span>PayPal</span>
-                    </div>
-                    <div class="method" onclick="selectWithdrawMethod('bank')">
-                        <i class="fas fa-university"></i>
-                        <span>Bank Transfer</span>
-                    </div>
-                </div>
-                <form id="withdraw-form" class="hidden">
-                    <input type="number" id="withdraw-amount" placeholder="Amount (min: 5000 points)">
-                    <input type="text" id="withdraw-address" placeholder="Payment Address">
-                    <button type="submit">Submit Withdrawal</button>
-                </form>
-            </div>
-        </section>
+# SQLite Database Functions
+def create_table():
+    """Create the SQLite database table if it doesn't exist."""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users
+                      (user_id INTEGER PRIMARY KEY, 
+                       preference TEXT)''')
+    conn.commit()
+    conn.close()
 
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <div class="nav-item" onclick="showSection('profile')">
-                <i class="fas fa-user"></i>
-                <span>Profile</span>
-            </div>
-            <div class="nav-item" onclick="showSection('tap')">
-                <i class="fas fa-hand-pointer"></i>
-                <span>Tap</span>
-            </div>
-            <div class="nav-item" onclick="showSection('tasks')">
-                <i class="fas fa-tasks"></i>
-                <span>Tasks</span>
-            </div>
-            <div class="nav-item" onclick="showSection('withdraw')">
-                <i class="fas fa-wallet"></i>
-                <span>Withdraw</span>
-            </div>
-        </nav>
-    </div>
+def set_preference(user_id, preference):
+    """Set user preference in the SQLite database."""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT OR REPLACE INTO users (user_id, preference)
+                      VALUES (?, ?)''', (user_id, preference))
+    conn.commit()
+    conn.close()
 
-    <script src="app.js"></script>
-</body>
-</html>
+def get_preference(user_id):
+    """Get user preference from the SQLite database."""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''SELECT preference FROM users WHERE user_id = ?''', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        return result[0]
+    return None
+
+# Fetch a motivational quote
+def get_motivational_quote():
+    """Fetch a random motivational quote."""
+    response = requests.get("https://api.quotable.io/random")
+    data = response.json()
+    return data['content']
+
+# Fetch a Quranic verse
+def get_quranic_verse():
+    """Fetch a specific Quranic verse (Ayat-ul-Kursi)."""
+    response = requests.get("https://api.alquran.cloud/v1/ayah/2:255")
+    data = response.json()
+    verse = data['data']['text']
+    tafsir = "Tafsir: This is Ayat-ul-Kursi, which speaks about Allah's sovereignty."
+    return f"Quranic Verse: {verse}\n\n{tafsir}"
+
+# Send daily quote or verse based on user preference
+def send_daily_quote(update: Update, context: CallbackContext):
+    """Send a daily quote or Quranic verse based on user preference."""
+    user_id = update.message.from_user.id
+    preference = get_preference(user_id) or "motivation"  # Default to motivation
+
+    if preference == "motivation":
+        quote = get_motivational_quote()
+        update.message.reply_text(f"Your Daily Motivation:\n\n{quote}")
+    elif preference == "quran":
+        verse = get_quranic_verse()
+        update.message.reply_text(f"Your Daily Quranic Verse:\n\n{verse}")
+    else:
+        update.message.reply_text("Please choose between 'motivation' or 'quran'.")
+
+# Change user preferences
+def set_user_preference(update: Update, context: CallbackContext):
+    """Change the user’s daily content preference."""
+    user_id = update.message.from_user.id
+    if context.args:
+        preference = context.args[0]
+        if preference in ['motivation', 'quran']:
+            set_preference(user_id, preference)
+            update.message.reply_text(f"Your daily content preference has been set to: {preference}")
+        else:
+            update.message.reply_text("Invalid choice. Choose 'motivation' or 'quran'.")
+    else:
+        update.message.reply_text("Please provide a preference: /setpreference motivation or /setpreference quran")
+
+# Start command to guide users
+def start(update: Update, context: CallbackContext):
+    """Send the start message and basic instructions."""
+    update.message.reply_text(
+        'Welcome! Use /setpreference motivation or /setpreference quran to set your daily content.\n\n'
+        'Use /quote to get your daily content.'
+    )
+
+# Main function to set up the bot
+def main():
+    """Main function to set up and run the bot."""
+    # Initialize the SQLite database
+    create_table()
+
+    # Set up the Updater and Dispatcher
+    updater = Updater(API_TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    # Add Command Handlers
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("quote", send_daily_quote))
+    dp.add_handler(CommandHandler("setpreference", set_user_preference))
+
+    # Start the bot and keep it running
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
